@@ -82,22 +82,24 @@ FATFS fatfs;                                   //逻辑驱动器的工作区
 #include "sys_fatfs_test.hpp"
 #include "sys_fatfs_diskioTest.hpp"
 #include "extlib_easyflash_test.hpp"
-
+#include "dev_control.hpp"
+#include "dev-EM.hpp"
 /** SCLIB_TEST */
 #include "sc_test.hpp"
 
 
 
-void MENU_DataSetUp(void);
 
+void MENU_DataSetUp(void);
+/**摄像头部分*/
 cam_zf9v034_configPacket_t cameraCfg;
 dmadvp_config_t dmadvpCfg;
 dmadvp_handle_t dmadvpHandle;
 void CAM_ZF9V034_DmaCallback(edma_handle_t *handle, void *userData, bool transferDone, uint32_t tcds);
-
+/**陀螺仪部分*/
 inv::i2cInterface_t imu_i2c(nullptr, IMU_INV_I2cRxBlocking, IMU_INV_I2cTxBlocking);
 inv::mpu6050_t imu_6050(imu_i2c);
-
+/**oled部分*/
 disp_ssd1306_frameBuffer_t dispBuffer;
 graphic::bufPrint0608_t<disp_ssd1306_frameBuffer_t> bufPrinter(dispBuffer);
 
@@ -141,8 +143,11 @@ void main(void)
     MENU_Data_NvmRead(menu_currRegionNum);
     /** 菜单挂起 */
     MENU_Suspend();
+
     /** 初始化摄像头 */
-    //TODO: 在这里初始化摄像头
+    //用电磁不需要摄像头
+
+
     /** 初始化IMU */
     //TODO: 在这里初始化IMU（MPU6050）
     /** 菜单就绪 */
@@ -155,7 +160,7 @@ void main(void)
     //cDISP_SSD1306_BufferUpload((uint8_t*) DISP_image_100thAnniversary);
     //DISP_SSD1306_delay_ms(100);
     //DISP_SSD1306_BufferUploadDMA((uint8_t*) DISP_image_100thAnniversary);
-    CAM_ZF9V034_UnitTest();
+    //CAM_ZF9V034_UnitTest();
     //DISP_SSD1306_BufferUpload((uint8_t*) &dispBuffer);
 
     //EF_BasicTest();
@@ -169,22 +174,39 @@ void main(void)
 
     while (true)
     {
-        //TODO: 在这里添加车模保护代码
+        del_start();//延时
+
+
+
+
+
+
+
+
     }
 }
 
 void MENU_DataSetUp(void)
 {
-    MENU_ListInsert(menu_menuRoot, MENU_ItemConstruct(nullType, NULL, "EXAMPLE", 0, 0));
-    //TODO: 在这里添加子菜单和菜单项
-    MENU_DataSetupTest(menu_menuRoot);
+   MENU_ListInsert(menu_menuRoot, MENU_ItemConstruct(nullType, NULL, "EMCC-2", 0, 0));
+//    //TODO: 在这里添加子菜单和菜单项
+//    MENU_DataSetupTest(menu_menuRoot);
+    menu_CTRL();
+    EM_menu();
+
 }
+
+
+
+
+
+
+
+
 
 void CAM_ZF9V034_DmaCallback(edma_handle_t *handle, void *userData, bool transferDone, uint32_t tcds)
 {
-    //TODO: 补完本回调函数，双缓存采图。
-
-    //TODO: 添加图像处理（转向控制也可以写在这里）
+   //此处不需要
 }
 
 /**
