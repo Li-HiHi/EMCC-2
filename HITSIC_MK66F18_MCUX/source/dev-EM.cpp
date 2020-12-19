@@ -15,7 +15,13 @@ float AD[8];
 float AD_MAX[8];//归一化用的最大值,菜单参数
 float AD_nor[8];//归一化后的值（0~100）
 float MinLVGot=1;
-bool em_sw=1;
+
+
+
+bool EM_loss=false;//丢线标志位
+bool em_sw=1;//赛道保护标志位
+bool hd_flag=false;//环岛标志位
+bool pd_flag=false;//坡道标志位
 
 
 void LV_Sample(void)
@@ -98,7 +104,7 @@ void LV_Sample(void)
  float get_EM_error(void)
 {
     float a;
-    a=(float)(AD_nor[6]-AD_nor[0])/(AD_nor[0]*AD_nor[6]);
+    a=(float)(AD_nor[6]-AD_nor[0])/(AD_nor[0]*AD_nor[6]+1);
     return a;
 }
 
@@ -106,10 +112,20 @@ void LV_Sample(void)
 
  void normalization(void)
 {
- for (int8_t i=0;i<=8;i++)
+ for (uint8_t i=0;i<=8;i++)
      AD_nor[i]=100*AD[i]/AD_MAX[i];
 
 }
+
+
+
+ void EM_loss_(void)
+ {
+     if(AD_nor[6]+AD_nor[0]<100)EM_loss=true;
+     else EM_loss=false;
+ }
+
+
 
  void EM_menu(void)
  {
@@ -160,7 +176,6 @@ void LV_Sample(void)
 
 
  }
-
 
 
 

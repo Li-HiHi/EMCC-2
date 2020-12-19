@@ -49,7 +49,7 @@ float Motor_R=spd_M,Motor_L=spd_M;//电机占空比输出（最终值）
 
 float errorS=0,errorS_1=0;//电磁误差值，后期改为数组
 float steer_pwm=steer_mid;//舵机输出占空比（最终值）
-
+float pwm_last[8]={0};
 
 
 /********************设置中断****************/
@@ -57,7 +57,7 @@ float steer_pwm=steer_mid;//舵机输出占空比（最终值）
 void Int_set(void)
 {
     pitMgr_t::insert(6,0,my_Motor,pitMgr_t::enable);
-    pitMgr_t::insert(20,1,my_steer,pitMgr_t::enable);
+    pitMgr_t::insert(20,2,my_steer,pitMgr_t::enable);
 }
 
 
@@ -72,7 +72,7 @@ void my_Motor(void *a)
     spd_L_Now=SCFTM_GetSpeed(FTM1)*0.35;
     SCFTM_ClearSpeed(FTM1);
 
-
+    MotorCTRL();
     if(delay_sw==0||em_sw==0)
     {
         Motor_R=0;
@@ -120,6 +120,7 @@ void my_Motor(void *a)
 }
 void my_steer(void *a)
 {
+    steerCTRL();
     SCFTM_PWM_ChangeHiRes(FTM3,kFTM_Chnl_7,50,steer_pwm);
 }
 
@@ -133,6 +134,7 @@ float my_delta(float a,float b)
     float x;
     if(a>=b)x=a-b;
     else x=b-a;
+    return x;
 }
 
 
@@ -148,28 +150,25 @@ float my_delta(float a,float b)
 void steerCTRL(void)
 {
 
-    //errorS = get_image_error(foresight);//获取差值
-
-
-//    /**赛场保护*/
-//   if(get_image_error(60)==0)
-//       image_sw=0;
-//   else
-//       image_sw=1;
-
-
     /**电磁处理*/
-  // LV_Sample();
-  // LV_Get_Val();
-   //em_error=get_EM_error();
+   LV_Sample();
+   LV_Get_Val();
+   normalization();
+   EM_loss_();
+   errorS=get_EM_error();
+
+
+
+
+
 
    /***分段参数**/
-   if(errorS> turn_TH+5||errorS < -turn_TH-5)
+   if(my_delta(errorS,0)>(float)(turn_TH+dx))
    {
        Kp_s=Kp_s_wd;
        wd_flag=1;
    }
-   else if(errorS < turn_TH&&errorS > -turn_TH)
+   else if(my_delta(errorS,0)<(float)(turn_TH))
    {
        Kp_s=Kp_s_zd;
        wd_flag=0;
@@ -181,8 +180,6 @@ void steerCTRL(void)
        wd_flag=0.5;
 
    }
-
-
    steer_pwm=Kp_s*errorS+Kd_s*(errorS-errorS_1)+steer_mid;
    errorS_1=errorS;
 
@@ -192,6 +189,26 @@ void steerCTRL(void)
     else if(steer_pwm>steer_mid+0.85)
         steer_pwm=steer_mid+0.85;
 
+
+
+/**丢线处理**/
+    if(EM_loss)
+    {
+        float x=0;
+        x=(pwm_last[0]+pwm_last[1]+pwm_last[2]+pwm_last[3]+pwm_last[4]+pwm_last[5]+pwm_last[6]+pwm_last[7]+pwm_last[8])/9;
+        if(x>0)
+        steer_pwm=steer_mid+0.5;
+        else if(x<0)
+        steer_pwm=steer_mid-0.5;
+    }
+
+    pwm_last[0]=steer_pwm;
+    for (uint8_t i=1;i<=8;i++)
+    {
+        pwm_last[i]=pwm_last[i-1];
+    }
+
+
 }
 /***************电机输出********************
  * 说明：
@@ -199,7 +216,6 @@ void steerCTRL(void)
  *
  * 增量式PI控制
  *
- *增加过渡部分
  * ***/
 void MotorCTRL(void)
 {
@@ -208,7 +224,7 @@ void MotorCTRL(void)
 
    /********差速*****
     * **弯道低速*/
-    if(errorS > turn_TH+5||errorS < -turn_TH-5)
+    if(my_delta(errorS,0)>(float)turn_TH)
     {
         Motor_L_goal = spd_Ml*(1+spdfix_R*SpdFix(steer_pwm-steer_mid));
         Motor_R_goal = spd_Ml*(1-spdfix_L*SpdFix(steer_pwm-steer_mid));

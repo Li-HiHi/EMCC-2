@@ -33,16 +33,16 @@
 /**主控制部分*/
 
 void Int_set(void);//插入中断√√
-void my_Motor(void *a);//电机中断服务函数
-void my_steer(void *a);//舵机中断服务函数
+void my_Motor(void *a);//电机中断服务函数√
+void my_steer(void *a);//舵机中断服务函数√
 void steerCTRL(void);
 void MotorCTRL(void);
 
 /**功能部分*/
 float SpdFix(float x);//差速拟合曲线函数√√
 void del_start(void);//延时启动函数√√
-void menu_CTRL(void);//控制部分菜单
-void wifi(void);//wifi传输
+void menu_CTRL(void);//控制部分菜单√
+void wifi(void);//wifi传输√√
 
 /**数学计算部分*/
 float trans_error(float error,float high,float low,float dx);//线性部分计算√√

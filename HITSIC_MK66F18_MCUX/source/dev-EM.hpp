@@ -25,7 +25,7 @@
 
 
 
-extern bool em_sw;
+extern bool em_sw,EM_loss;
 
 
 
@@ -35,5 +35,9 @@ void swap(uint32_t * a, uint32_t * b);//交换函数√√
 float get_EM_error(void);//误差获取，待更新
 void normalization(void);//归一化
 void EM_menu(void);//电磁菜单部分
+void EM_loss_(void);//丢线处理
+
+
+
 
 #endif /* DEV_EM_HPP_ */
