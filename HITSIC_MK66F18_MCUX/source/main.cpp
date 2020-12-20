@@ -189,7 +189,6 @@ void main(void)
 void MENU_DataSetUp(void)
 {
    MENU_ListInsert(menu_menuRoot, MENU_ItemConstruct(nullType, NULL, "EMCC-2", 0, 0));
-//    //TODO: 在这里添加子菜单和菜单项
 //    MENU_DataSetupTest(menu_menuRoot);
     menu_CTRL();
     EM_menu();

@@ -8,20 +8,30 @@
 #include "dev-EM.hpp"
 
 
-uint8_t channel_name[8]={16,23,17,18,10,11,12,13};//adc通道号码
+uint8_t channel_name[8] = {16,23,17,18,10,11,12,13};//adc通道
 uint32_t LV_Temp[8][SampleTimes];
 float LV[8];
 float AD[8];
 float AD_MAX[8];//归一化用的最大值,菜单参数
 float AD_nor[8];//归一化后的值（0~100）
-float MinLVGot=1;
+
+/**电感对*/
+uint8_t g1[2]={0,1};
+uint8_t g2[2]={2,3};
+uint8_t g3[2]={4,5};
+uint8_t g4[2]={6,7};
+
+/**调参参数*/
+float loss_TH_in = 50;//进丢线阈值
+float loss_TH_out = 70;//出丢线阈值
+float alpha=0.5; //电感权重
 
 
-
-bool EM_loss=false;//丢线标志位
-bool em_sw=1;//赛道保护标志位
-bool hd_flag=false;//环岛标志位
-bool pd_flag=false;//坡道标志位
+/*各种判定标志位*/
+bool EM_loss = false;//丢线标志位
+bool em_sw = true;//赛道保护标志位
+bool hd_flag = false;//环岛标志位
+bool pd_flag = false;//坡道标志位
 
 
 void LV_Sample(void)
@@ -87,10 +97,10 @@ void LV_Sample(void)
   AD[5] = LV[5];
   AD[6] = LV[6];
   AD[7] = LV[7];
-  AD[8] = LV[8];
 
 
 
+//保护
 //  if(AD[0]<20&&AD[6]<20)
 //      em_sw=0;
 }
@@ -109,7 +119,7 @@ void LV_Sample(void)
 }
 
 
-
+/******归一化**********/
  void normalization(void)
 {
  for (uint8_t i=0;i<=8;i++)
@@ -118,17 +128,39 @@ void LV_Sample(void)
 }
 
 
-
+/**丢线判定*/
  void EM_loss_(void)
  {
-     if(AD_nor[6]+AD_nor[0]<100)EM_loss=true;
-     else EM_loss=false;
+     if(!EM_loss)
+     {
+         if (AD_nor[6]+AD_nor[0]<loss_TH_in)
+         EM_loss=true;
+     }
+
+     if(EM_loss)
+     {
+         if (AD_nor[6]+AD_nor[0]>loss_TH_out)
+         EM_loss=false;
+     }
  }
 
 
 
  void EM_menu(void)
  {
+     menu_list_t *EM_CTRL;
+     EM_CTRL = MENU_ListConstruct("AD", 10, menu_menuRoot);
+     MENU_ListInsert(menu_menuRoot, MENU_ItemConstruct(menuType,EM_CTRL, "AD", 0, 0));
+     MENU_ListInsert(EM_CTRL, MENU_ItemConstruct(varfType, &loss_TH_in, "LOSS_TH_in", 59, menuItem_data_global));
+     MENU_ListInsert(EM_CTRL, MENU_ItemConstruct(varfType, &loss_TH_out, "LOSS_TH_out", 60, menuItem_data_global));
+
+
+
+
+
+
+
+
      menu_list_t *AD_sub;
      AD_sub = MENU_ListConstruct("AD", 10, menu_menuRoot);
      MENU_ListInsert(menu_menuRoot, MENU_ItemConstruct(menuType,AD_sub, "AD", 0, 0));
@@ -164,7 +196,7 @@ void LV_Sample(void)
      MENU_ListInsert(ADnor_sub, MENU_ItemConstruct(varfType, &AD_nor[1], "AD_nor[1]",  0, menuItem_data_ROFlag | menuItem_data_NoSave | menuItem_data_NoLoad));
      MENU_ListInsert(ADnor_sub, MENU_ItemConstruct(varfType, &AD_nor[2], "AD_nor[2]",  0, menuItem_data_ROFlag | menuItem_data_NoSave | menuItem_data_NoLoad));
      MENU_ListInsert(ADnor_sub, MENU_ItemConstruct(varfType, &AD_nor[3], "AD_nor[3]",  0, menuItem_data_ROFlag | menuItem_data_NoSave | menuItem_data_NoLoad));
-     MENU_ListInsert(ADnor_sub, MENU_ItemConstruct(varfType, &AD_nor[4], "AD_nor[4]", 0, menuItem_data_ROFlag | menuItem_data_NoSave | menuItem_data_NoLoad));
+     MENU_ListInsert(ADnor_sub, MENU_ItemConstruct(varfType, &AD_nor[4], "AD_nor[4]",  0, menuItem_data_ROFlag | menuItem_data_NoSave | menuItem_data_NoLoad));
      MENU_ListInsert(ADnor_sub, MENU_ItemConstruct(varfType, &AD_nor[5], "AD_nor[5]",  0, menuItem_data_ROFlag | menuItem_data_NoSave | menuItem_data_NoLoad));
      MENU_ListInsert(ADnor_sub, MENU_ItemConstruct(varfType, &AD_nor[6], "AD_nor[6]",  0, menuItem_data_ROFlag | menuItem_data_NoSave | menuItem_data_NoLoad));
      MENU_ListInsert(ADnor_sub, MENU_ItemConstruct(varfType, &AD_nor[7], "AD_nor[7]",  0, menuItem_data_ROFlag | menuItem_data_NoSave | menuItem_data_NoLoad));
