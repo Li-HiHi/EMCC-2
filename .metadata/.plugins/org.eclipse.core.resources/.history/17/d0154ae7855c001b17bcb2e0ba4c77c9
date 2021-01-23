@@ -1,0 +1,42 @@
+/*
+ * dev_control.hpp
+ *
+ *  Created on: 2020年11月23日
+ *      Author: VULCAN
+ */
+
+#ifndef DEV_CONTROL_HPP_
+#define DEV_CONTROL_HPP_
+
+#include <dev-EM.hpp>
+#include "hitsic_common.h"
+#include "inc_stdlib.hpp"
+
+#include "sys_pitmgr.hpp"
+#include "sys_extint.hpp"
+#include "drv_imu_invensense.hpp"
+#include "lib_pidctrl.h"
+
+#include "app_menu.hpp"
+#include "sc_ftm.h"
+#include "drv_disp_ssd1306_port.hpp"
+#include "image.h"
+
+extern float Kp_M,Ki_M,Kp_s_wd,Kd_s_wd,Kp_s_zd,Kd_s_zd,spd_M,spd_Ml,wd_flag;
+extern int foresight,turn_TH,zebra_delay,zebra_start_flag;
+extern int delay_sw;
+extern float Motor_R,Motor_L,steer_pwm,error,errorS;
+extern float spd_R_Now, spd_L_Now,Motor_L_set,Motor_R_set,spdfix_R,spdfix_L;
+
+void Int_set(void);//插入中断
+void my_Motor(void *a);//电机中断服务函数
+void my_steer(void *a);//舵机中断服务函数
+void steerCTRL(void);
+void MotorCTRL(void);
+float trans_error(float error,float high,float low);
+float SpdFix(float x);
+void del_start(void);//延时启动函数
+void zebra_CTRL(void);
+
+
+#endif /* DEV_CONTROL_HPP_ */

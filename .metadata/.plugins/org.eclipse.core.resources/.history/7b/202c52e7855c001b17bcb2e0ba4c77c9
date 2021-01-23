@@ -1,0 +1,26 @@
+#include "hitsic_common.h"
+#include "inc_stdlib.hpp"
+
+#include "sys_pitmgr.hpp"
+#include "sys_extint.hpp"
+#include "drv_imu_invensense.hpp"
+#include "lib_pidctrl.h"
+
+#include "app_menu.hpp"
+#include "sc_ftm.h"
+#include "sc_adc.h"
+#include "drv_disp_ssd1306_port.hpp"
+
+#include "image.h"
+
+
+#define SampleTimes 25
+extern int8_t em_sw;
+
+
+
+
+void LV_Sample(void);
+void LV_Get_Val(void);
+void swap(uint32_t * a, uint32_t * b);
+float get_EM_error(void);

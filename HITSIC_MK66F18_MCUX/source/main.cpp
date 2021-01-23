@@ -58,7 +58,7 @@
 #include "sys_extint.hpp"
 #include "sys_uartmgr.hpp"
 #include "cm_backtrace.h"
-#include "easyflash.h"
+//#include "easyflash.h"
 
 /** HITSIC_Module_LIB */
 #include "lib_graphic.hpp"
@@ -81,25 +81,35 @@ FATFS fatfs;                                   //逻辑驱动器的工作区
 #include "drv_imu_invensense_test.hpp"
 #include "sys_fatfs_test.hpp"
 #include "sys_fatfs_diskioTest.hpp"
-#include "extlib_easyflash_test.hpp"
-#include "dev_control.hpp"
-#include "dev-EM.hpp"
+#include "sc_host.h"
 /** SCLIB_TEST */
 #include "sc_test.hpp"
+/**控制*/
+
+#include "dev_control.hpp"
+#include "dev-EM.hpp"
 
 
 
 
 void MENU_DataSetUp(void);
-/**摄像头部分*/
+
+
+
+/**全局变量*/
+
+
+
+
+
 cam_zf9v034_configPacket_t cameraCfg;
 dmadvp_config_t dmadvpCfg;
 dmadvp_handle_t dmadvpHandle;
 void CAM_ZF9V034_DmaCallback(edma_handle_t *handle, void *userData, bool transferDone, uint32_t tcds);
-/**陀螺仪部分*/
+
 inv::i2cInterface_t imu_i2c(nullptr, IMU_INV_I2cRxBlocking, IMU_INV_I2cTxBlocking);
 inv::mpu6050_t imu_6050(imu_i2c);
-/**oled部分*/
+
 disp_ssd1306_frameBuffer_t dispBuffer;
 graphic::bufPrint0608_t<disp_ssd1306_frameBuffer_t> bufPrinter(dispBuffer);
 
@@ -119,12 +129,10 @@ void main(void)
     RTEPIP_Device();
 
     /** 初始化调试组件 */
-    //DbgConsole_Init(0U, 921600U, kSerialPort_Uart, CLOCK_GetFreq(kCLOCK_CoreSysClk));
+    DbgConsole_Init(0U, 921600U, kSerialPort_Uart, CLOCK_GetFreq(kCLOCK_CoreSysClk));
     PRINTF("Welcome to HITSIC !\n");
-    PRINTF("Compiler: GCC %d.%d.%d\n", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
-    PRINTF("C++ std = %d\n", __cplusplus);
-    PRINTF("Complie time: %s %s\n", __DATE__, __TIME__);
-    cm_backtrace_init("HITSIC_MK66F18", "2020-v3.0", "v4.2.0");
+    PRINTF("GCC %d.%d.%d\n", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
+    cm_backtrace_init("HITSIC_MK66F18", "2020-v3.0", "v4.1.1");
 
     /** 初始化OLED屏幕 */
     DISP_SSD1306_Init();
@@ -132,81 +140,70 @@ void main(void)
     DISP_SSD1306_BufferUpload((uint8_t*) DISP_image_100thAnniversary);
     /** 初始化ftfx_Flash */
     FLASH_SimpleInit();
-    //easyflash_init();
     /** 初始化PIT中断管理器 */
     pitMgr_t::init();
     /** 初始化I/O中断管理器 */
     extInt_t::init();
+    /** 初始化OLED屏幕 */
     /** 初始化菜单 */
     MENU_Init();
     MENU_Data_NvmReadRegionConfig();
     MENU_Data_NvmRead(menu_currRegionNum);
+
     /** 菜单挂起 */
     MENU_Suspend();
-
     /** 初始化摄像头 */
-    //用电磁不需要摄像头
-
 
     /** 初始化IMU */
     //TODO: 在这里初始化IMU（MPU6050）
     /** 菜单就绪 */
-    //MENU_Resume();
-    /** 控制环初始化 */
-    //TODO: 在这里初始化控制环
-    /** 初始化结束，开启总中断 */
-    HAL_ExitCritical();
-    //DISP_SSD1306_delay_ms(100);
-    //cDISP_SSD1306_BufferUpload((uint8_t*) DISP_image_100thAnniversary);
-    //DISP_SSD1306_delay_ms(100);
-    //DISP_SSD1306_BufferUploadDMA((uint8_t*) DISP_image_100thAnniversary);
-    //CAM_ZF9V034_UnitTest();
-    //DISP_SSD1306_BufferUpload((uint8_t*) &dispBuffer);
-
-    //EF_BasicTest();
     MENU_Resume();
+     /** 控制环初始化 */
+    Int_set();//插入中断
+    /** 初始化结束，开启总中断 */
+
+
+    HAL_ExitCritical();
+
     /** 内置DSP函数测试 */
     float f = arm_sin_f32(0.6f);
 
-//    menu_list_t *list = MENU_DirGetList("/TestList");
-//    if(true);
-//    menu_itemIfce_t *itme = MENU_DirGetItem(list, "region_i");
+
+
+
 
     while (true)
     {
-        del_start();//延时
-
-
-
-
-
-
 
 
     }
 }
 
+
+
+/******************************创建菜单******************************/
+
+
+
 void MENU_DataSetUp(void)
 {
-   MENU_ListInsert(menu_menuRoot, MENU_ItemConstruct(nullType, NULL, "EMCC-2", 0, 0));
-//    MENU_DataSetupTest(menu_menuRoot);
-    menu_CTRL();
-    EM_menu();
+
+
+
+        MENU_ListInsert(menu_menuRoot, MENU_ItemConstruct(nullType, NULL, "Four-wheeler-4", 0, 0));
+        //MENU_ListInsert(menu_menuRoot, MENU_ItemConstruct(nullType, NULL, "EXAMPLE", 0, 0));
+         menu_CTRL();
+         EM_menu();
 
 }
 
-
-
-
-
-
-
-
-
+ /*********************************回调函数*************************************/
 void CAM_ZF9V034_DmaCallback(edma_handle_t *handle, void *userData, bool transferDone, uint32_t tcds)
 {
-   //此处不需要
+
+
 }
+
 
 /**
  * 『灯千结的碎碎念』 Tips by C.M. :

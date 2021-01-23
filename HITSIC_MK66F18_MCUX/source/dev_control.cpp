@@ -24,13 +24,12 @@ bool delay_sw=0;//延迟启动位
 //pid控制参数
 float Kp_M=0,Ki_M=0;//电机
 float Kp_s_wd=0.0165,Kd_s=0.08;//弯道舵机
-float Kp_s_zd=0.0165;//直道舵机
+
 //速度控制
 float spd_M=35,spd_Ml=30;//高速和低速设置
-float spdfix_R=1,spdfix_L=1;//差速系数
+
 //其他
-int  turn_TH=5;//转弯临界点
-int dx=5;//线性部分长度
+
 float loss_pwm=0.6;//丢线情况下的打角
 
 /**非调参部分**
@@ -40,13 +39,13 @@ float loss_pwm=0.6;//丢线情况下的打角
 float spd_R_Now,spd_L_Now;//当前速度
 float steer_mid=7.65;//舵机中点
 
-float wd_flag=0;//弯道直道状态，0直道，1弯道，0.5中间状态
-float Kp_s;//当前的pd参数
 
+float Kp_s;//当前的pd参数
+float Dist=0;//路程累加器
 
 float Motor_error_L=0,Motor_error_R=0;
 float Motor_error_L1=0,Motor_error_R1=0;//速度误差
-float Motor_L_goal=spd_M,Motor_R_goal=spd_M;//目标占空比输出（直道时一般为设定值，在差速情况下会有变化）
+float Motor_R_goal=spd_M;//目标占空比输出（直道时一般为设定值，在差速情况下会有变化）
 float Motor_R=spd_M,Motor_L=spd_M;//电机占空比输出（最终值）
 
 float errorS=0,errorS_1=0;//电磁误差值
@@ -69,47 +68,44 @@ void Int_set(void)
 void my_Motor(void *a)
 {
    /*速度获取*/
-    spd_R_Now=-SCFTM_GetSpeed(FTM2)*0.35;
+    spd_R_Now=SCFTM_GetSpeed(FTM2);
     SCFTM_ClearSpeed(FTM2);
-    spd_L_Now=SCFTM_GetSpeed(FTM1)*0.35;
-    SCFTM_ClearSpeed(FTM1);
+    Motor_R=spd_Ml;
+//    if(ring_in||ring_out)
+//        Dist+=spd_R_Now;
 
-    MotorCTRL();
-    if(delay_sw==0||em_sw==0)
-    {
-        Motor_R=0;
-        Motor_L=0;
-    }
+   // MotorCTRL();
+//    if(delay_sw==0||em_sw==0)
+//    {
+//        Motor_R=0;
+//    }
 
     /*******反转保护并最终输出电机占空比**
      * 最终输出部分，之前只允许更改Motor_R/L大小，不准直接输出占空比
      */
         if(Motor_R>0)
         {
-            SCFTM_PWM_ChangeHiRes(FTM0,kFTM_Chnl_0,20000,Motor_R);
-            SCFTM_PWM_ChangeHiRes(FTM0,kFTM_Chnl_1,20000,0);
+            SCFTM_PWM_ChangeHiRes(FTM0,kFTM_Chnl_0,19000,Motor_R);
+            SCFTM_PWM_ChangeHiRes(FTM0,kFTM_Chnl_1,19000,0);
         }
         else
         {
-            SCFTM_PWM_ChangeHiRes(FTM0,kFTM_Chnl_0,20000,0);
-            SCFTM_PWM_ChangeHiRes(FTM0,kFTM_Chnl_1,20000,-Motor_R);
+            SCFTM_PWM_ChangeHiRes(FTM0,kFTM_Chnl_0,19000,0);
+            SCFTM_PWM_ChangeHiRes(FTM0,kFTM_Chnl_1,19000,-Motor_R);
         }
-        if(Motor_L>0)
-        {
-            SCFTM_PWM_ChangeHiRes(FTM0,kFTM_Chnl_2,20000,Motor_L);
-            SCFTM_PWM_ChangeHiRes(FTM0,kFTM_Chnl_3,20000,0);
-        }
-        else
-        {
-            SCFTM_PWM_ChangeHiRes(FTM0,kFTM_Chnl_2,20000,0);
-            SCFTM_PWM_ChangeHiRes(FTM0,kFTM_Chnl_3,20000,-Motor_L);
-        }
+
 
 }
 void my_steer(void *a)
 {
-    steerCTRL();
-    SCFTM_PWM_ChangeHiRes(FTM3,kFTM_Chnl_7,50,steer_pwm);
+   steerCTRL();
+    /**限幅*/
+         if(steer_pwm<steer_mid-1)
+         steer_pwm=steer_mid-1;
+         else if(steer_pwm>steer_mid+1)
+         steer_pwm=steer_mid+1;
+
+    SCFTM_PWM_ChangeHiRes(FTM3,kFTM_Chnl_7,300,steer_pwm);
 }
 
 /********差值计算函数*************
@@ -144,51 +140,31 @@ void steerCTRL(void)
    normalization();//归一化
    EM_loss_();//丢线判定
 
+  // EM_ring_();//环岛判定
+
+//   errorS=get_EM_error();
+//
+//   Kp_s=Kp_s_wd;
+//
+//   steer_pwm=Kp_s*errorS+Kd_s*(errorS-errorS_1)+steer_mid;
+//   errorS_1=errorS;
 
 
 
 
-
-
-   if(!EM_loss)//正常情况，误差计算，输出pwm
+if(!EM_loss)//正常情况，误差计算，输出pwm
    {
+    //获取误差
+    errorS=get_EM_error();
 
+    Kp_s=Kp_s_wd;
 
-   //获取误差
-   errorS=get_EM_error();
-
-
-
-   /***分段参数**/
-   if(my_delta(errorS,0)>(float)(turn_TH+dx))
-   {
-       Kp_s=Kp_s_wd;
-       wd_flag=1;
-   }
-   else if(my_delta(errorS,0)<(float)(turn_TH))
-   {
-       Kp_s=Kp_s_zd;
-       wd_flag=0;
-   }
-   else
-   {
-
-       Kp_s=trans_error(errorS,Kp_s_wd,Kp_s_zd,dx);
-       wd_flag=0.5;
-
-   }
-   steer_pwm=Kp_s*errorS+Kd_s*(errorS-errorS_1)+steer_mid;
-   errorS_1=errorS;
+    steer_pwm=Kp_s*errorS+Kd_s*(errorS-errorS_1)+steer_mid;
+    errorS_1=errorS;
 
 
 
-   /**限幅*/
-    if(steer_pwm<steer_mid-0.85)
-        steer_pwm=steer_mid-0.85;
-    else if(steer_pwm>steer_mid+0.85)
-        steer_pwm=steer_mid+0.85;
-
-    /****舵机输出记录，用于丢线情况***/
+            /****舵机输出记录，用于丢线情况***/
         pwm_last[0]=steer_pwm;
         for (uint8_t i=8;i>0;i--)
         {
@@ -197,7 +173,7 @@ void steerCTRL(void)
     }
 
 
-   else if (EM_loss)//丢线情况下，直接给一个打角
+else if (EM_loss)//丢线情况下，直接给一个打角
    {
        float x=0;
        //根据之前舵机输出情况计算丢线时的打角方向，可改进
@@ -222,26 +198,27 @@ void MotorCTRL(void)
 
 
 
-   /********差速*****
-    * **弯道低速*/
-    if(my_delta(errorS,0)>(float)turn_TH)
-    {
-        Motor_L_goal = spd_Ml*(1+spdfix_R*SpdFix(steer_pwm-steer_mid));
-        Motor_R_goal = spd_Ml*(1-spdfix_L*SpdFix(steer_pwm-steer_mid));
-    }
 
-    else
-    {
-        /**直道高速*/
-        Motor_L_goal = spd_M;
-        Motor_R_goal = spd_M;
-    }
+//    * **弯道低速*/
+//    if(my_delta(errorS,0)>(float)turn_TH)
+//    {
+//        Motor_L_goal = spd_Ml;
+//        Motor_R_goal = spd_Ml;
+//    }
+//
+//    else
+//    {
+//        /**直道高速*/
+//        Motor_L_goal = spd_M;
+//        Motor_R_goal = spd_M;
+//    }
 
+    Motor_R_goal = spd_Ml;
       //差值获取
-    Motor_error_L=Motor_L_goal-spd_L_Now;
+
     Motor_error_R=Motor_R_goal-spd_R_Now;
       //pid控制
-    Motor_L=Motor_L_goal+Kp_M*(Motor_error_L-Motor_error_L1)+Ki_M*Motor_error_L;
+
     Motor_R=Motor_R_goal+Kp_M*(Motor_error_R-Motor_error_R1)+Ki_M*Motor_error_R;
 
 
@@ -260,31 +237,18 @@ void MotorCTRL(void)
             Motor_R=-75;
 
 }
-/***************差速拟合计算*****************/
-float SpdFix(float x)
-{
-    float spdfix=0;
-    if(x>0)
-    spdfix= -0.0523*x*x*x - 0.0123*x*x - 0.2711*x + 0.0041;
-    if(x<0)
-    spdfix=-0.0523*x*x*x + 0.0123*x*x - 0.2711*x - 0.0041;
-    if(spdfix > 0.3 || spdfix < -0.3)
-    {
-        return 0;
-    }
-    return spdfix;
-}
 
-/****过渡部分线性计算***************/
-float trans_error(float error,float high,float low,float dx)
-{
-    float x;
 
-        x = low+(high-low)*(my_delta(error,0)-(float)turn_TH)/dx;
-        x = low+(high-low)*(my_delta(error,0)-(float)turn_TH)/dx;
-
-    return x;
-}
+///****过渡部分线性计算***************/
+//float trans_error(float error,float high,float low,float dx)
+//{
+//    float x;
+//
+//        x = low+(high-low)*(my_delta(error,0)-(float)turn_TH)/dx;
+//        x = low+(high-low)*(my_delta(error,0)-(float)turn_TH)/dx;
+//
+//    return x;
+//}
 
 
 
@@ -321,20 +285,17 @@ void menu_CTRL(void)
 
     MENU_ListInsert(servo_sub, MENU_ItemConstruct(varfType, &Kp_s_wd, "Kp_wd", 11, menuItem_data_global));
     MENU_ListInsert(servo_sub, MENU_ItemConstruct(varfType, &Kd_s, "Kd", 12, menuItem_data_global));
-    MENU_ListInsert(servo_sub, MENU_ItemConstruct(varfType, &Kp_s_zd, "Kp_zd", 13, menuItem_data_global));
-    MENU_ListInsert(servo_sub, MENU_ItemConstruct(variType, &turn_TH, "turn_TH", 20, menuItem_data_global));
-    MENU_ListInsert(servo_sub, MENU_ItemConstruct(variType, &dx, "dx", 21, menuItem_data_global));
+
 
     menu_list_t *motor_sub;
     motor_sub = MENU_ListConstruct("motor", 7, menu_menuRoot);
     MENU_ListInsert(menu_menuRoot, MENU_ItemConstruct(menuType, motor_sub, "motor", 0, 0));
 
-    MENU_ListInsert(motor_sub, MENU_ItemConstruct(varfType, &Kp_M, "Kp_M", 14, menuItem_data_global));
+    MENU_ListInsert(motor_sub, MENU_ItemConstruct(varfType, &Kp_M, "Kp_M", 24, menuItem_data_global));
     MENU_ListInsert(motor_sub, MENU_ItemConstruct(varfType, &Ki_M, "Ki_M", 15, menuItem_data_global));
     MENU_ListInsert(motor_sub, MENU_ItemConstruct(varfType, &spd_M, "spd_M", 16, menuItem_data_global));
     MENU_ListInsert(motor_sub, MENU_ItemConstruct(varfType, &spd_Ml, "spd_Ml", 17, menuItem_data_global));
-    MENU_ListInsert(motor_sub, MENU_ItemConstruct(varfType, &spdfix_R, "Kspd_R", 18, menuItem_data_global));
-    MENU_ListInsert(motor_sub, MENU_ItemConstruct(varfType, &spdfix_L, "Kspd_L", 19, menuItem_data_global));
+
 
     menu_list_t *CTRL_sub;
     CTRL_sub = MENU_ListConstruct("CTRL", 20, menu_menuRoot);
@@ -344,12 +305,12 @@ void menu_CTRL(void)
     MENU_ListInsert(CTRL_sub, MENU_ItemConstruct(varfType, &steer_mid, "steer_mid", 21, menuItem_data_global));
     MENU_ListInsert(CTRL_sub, MENU_ItemConstruct(varfType, &loss_pwm, "loss_pwm", 23, menuItem_data_global));
 
-    MENU_ListInsert(CTRL_sub, MENU_ItemConstruct(varfType, &spd_L_Now, "spd_L_Now", 0, menuItem_data_ROFlag | menuItem_data_NoSave | menuItem_data_NoLoad));
+   // MENU_ListInsert(CTRL_sub, MENU_ItemConstruct(varfType, &spd_L_Now, "spd_L_Now", 0, menuItem_data_ROFlag | menuItem_data_NoSave | menuItem_data_NoLoad));
     MENU_ListInsert(CTRL_sub, MENU_ItemConstruct(varfType, &spd_R_Now, "spd_R_Now", 0, menuItem_data_ROFlag | menuItem_data_NoSave | menuItem_data_NoLoad));
-    MENU_ListInsert(CTRL_sub, MENU_ItemConstruct(varfType, &wd_flag, "wd_flag", 0, menuItem_data_ROFlag | menuItem_data_NoSave | menuItem_data_NoLoad));
-    MENU_ListInsert(CTRL_sub, MENU_ItemConstruct(varfType, &Motor_L_goal, "M_L_goal", 0, menuItem_data_ROFlag | menuItem_data_NoSave | menuItem_data_NoLoad));
+    //MENU_ListInsert(CTRL_sub, MENU_ItemConstruct(varfType, &wd_flag, "wd_flag", 0, menuItem_data_ROFlag | menuItem_data_NoSave | menuItem_data_NoLoad));
+   // MENU_ListInsert(CTRL_sub, MENU_ItemConstruct(varfType, &Motor_L_goal, "M_L_goal", 0, menuItem_data_ROFlag | menuItem_data_NoSave | menuItem_data_NoLoad));
     MENU_ListInsert(CTRL_sub, MENU_ItemConstruct(varfType, &Motor_R_goal, "M_R_goal", 0, menuItem_data_ROFlag | menuItem_data_NoSave | menuItem_data_NoLoad));
-    MENU_ListInsert(CTRL_sub, MENU_ItemConstruct(varfType, &Motor_L, "Motor_L", 0, menuItem_data_ROFlag | menuItem_data_NoSave | menuItem_data_NoLoad));
+   // MENU_ListInsert(CTRL_sub, MENU_ItemConstruct(varfType, &Motor_L, "Motor_L", 0, menuItem_data_ROFlag | menuItem_data_NoSave | menuItem_data_NoLoad));
     MENU_ListInsert(CTRL_sub, MENU_ItemConstruct(varfType, &Motor_R, "Motor_R", 0, menuItem_data_ROFlag | menuItem_data_NoSave | menuItem_data_NoLoad));
     MENU_ListInsert(CTRL_sub, MENU_ItemConstruct(varfType, &errorS, "error", 0, menuItem_data_ROFlag | menuItem_data_NoSave | menuItem_data_NoLoad));
 

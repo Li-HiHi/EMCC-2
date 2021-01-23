@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">&#x0A;<refactoring comment="将资源“HITSIC_MK66F18_MCUX/source/dev_em.h”重命名为“dev-EM.hpp”" description="重命名资源“dev_em.h”" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="source/dev_em.h" name="dev-EM.hpp" stamp="1611301439759" updateReferences="true"/>&#x0A;<refactoring comment="将资源“HITSIC_MK66F18_MCUX/source/dev_em.c”重命名为“dev-EM.cpp”" description="重命名资源“dev_em.c”" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="source/dev_em.c" name="dev-EM.cpp" stamp="1611301449940" updateReferences="true"/>
+</session>
